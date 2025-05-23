@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8"/>
     <title>Таблица остатков</title>
     <style>
         body {
@@ -9,62 +9,107 @@
             margin: 0;
             padding: 0;
         }
+
         table {
             border-collapse: collapse;
             width: 100%;
         }
+
         th, td {
             border: 1px solid #ccc;
             padding: 6px 8px;
             text-align: left;
         }
+
         thead {
-            background: #f4f4f4;
+            background: #56a4dc;
+            color: white;
             position: sticky;
             top: 0;
             z-index: 1;
         }
+
         tbody tr:nth-child(even) {
-            background-color: #f9f9f9;
+            background-color: #e6f0fa;
         }
+
+        th, td {
+            border: 1px solid #b3d1f2;
+        }
+
+
         #loading {
             text-align: center;
             padding: 10px;
         }
+
+        .toolbar {
+            padding: 10px;
+            background: #f0f0f0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        select {
+            padding: 5px;
+        }
+
+
     </style>
 </head>
 <body>
+
+<div class="toolbar">
+    <label for="storage-select">Склад:</label>
+    <select id="storage-select">
+        <option value="a6d18604-ff6d-4527-887d-1ed9493bff1c">Склад MCBOX</option>
+        <option value="6584465f-09ef-4cf2-9c8d-301fb7ae220d">Хоз.склад</option>
+        <option value="bc0114f2-dfc0-41e3-b8bf-cb8fead9bf54">Бар</option>
+        <option value="3e03eb79-de2e-4a44-9053-a68dde1626b0">Кухня</option>
+    </select>
+</div>
 
 <div>
     <table>
         <thead>
         <tr>
-            <th>№</th>
-            <th>Наименование</th>
-            <th>Категория</th>
-            <th>Ед. изм.</th>
-            <th>Остаток нач.</th>
-            <th>Приход (кол-во)</th>
-            <th>Приход (сумма)</th>
-            <th>Расход (кол-во)</th>
-            <th>Расход (сумма)</th>
-            <th>Остаток кон.</th>
-            <th>Сумма кон.</th>
+            <th style="text-align: center" rowspan="2">#</th>
+            <th style="text-align: center" rowspan="2">Группа</th>
+            <th style="text-align: center" rowspan="2">Код</th>
+            <th style="text-align: center" rowspan="2">Товар</th>
+            <th style="text-align: center" rowspan="2">Ед. изм.</th>
+            <th style="text-align: center" colspan="2">Остаток нач.</th>
+            <th style="text-align: center" colspan="2">Приход</th>
+            <th style="text-align: center" colspan="2">Расход</th>
+            <th style="text-align: center" colspan="2">Остаток кон.</th>
+        </tr>
+        <tr>
+            <th style="text-align: center">Кол-во</th>
+            <th style="text-align: center">Сумма</th>
+            <th style="text-align: center">Кол-во</th>
+            <th style="text-align: center">Сумма</th>
+            <th style="text-align: center">Кол-во</th>
+            <th style="text-align: center">Сумма</th>
+            <th style="text-align: center">Кол-во</th>
+            <th style="text-align: center">Сумма</th>
         </tr>
         </thead>
         <tbody id="table-body"></tbody>
     </table>
+
     <div id="loading">Загрузка данных...</div>
 </div>
 
 <script>
-    //const API_URL = 'https://lk.master-check.kz/api/cus/item'; // замени на свой URL
-    const API_URL = 'https://lk.master-check.kz/api/cus/item'; // замени на свой URL
+    const API_URL = 'https://lk.master-check.kz/api/cus/item'; // или свой локальный
     const tableBody = document.getElementById('table-body');
     const loading = document.getElementById('loading');
+    const storageSelect = document.getElementById('storage-select');
 
-    async function fetchData() {
+    async function fetchData(storageId) {
         loading.textContent = 'Загрузка...';
+        tableBody.innerHTML = ''; // очищаем таблицу
 
         try {
             const myHeaders = new Headers();
@@ -74,11 +119,13 @@
                 "action": "testTbs",
                 "data": {
                     "dateStart": "2018-01-01",
-                    "dateEnd": "2025-05-15",
+                    "dateEnd": new Date(new Date().setDate(new Date().getDate() + 1))
+                        .toISOString()
+                        .split('T')[0],
                     "filters": {
                         "affiliate": "4ef6a6e8-fbe1-4d87-b081-a11520db2c17",
                         "cateringpoint": "21657090-d4e1-4516-83c5-c01ea62a2acc",
-                        "storage": "3e03eb79-de2e-4a44-9053-a68dde1626b0",
+                        "storage": storageId,
                         "sort": "code"
                     }
                 }
@@ -105,16 +152,18 @@
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${index + 1}</td>
-                    <td>${item.nomenclature.r}</td>
-                    <td>${item.nomenclature.f}</td>
-                    <td>${item.measure.r}</td>
-                    <td>${item.balance_quantity_start}</td>
-                    <td>${item.turnover_quantity_in}</td>
-                    <td>${item.turnover_sum_in}</td>
-                    <td>${item.turnover_quantity_out}</td>
-                    <td>${item.turnover_sum_out}</td>
-                    <td>${item.balance_quantity_end}</td>
-                    <td>${item.balance_sum_end}</td>
+                    <td>${item.nomenclature.f || ''}</td>
+                    <td>${item.nomenclature.c || ''}</td>
+                    <td>${item.nomenclature.r || ''}</td>
+                    <td style="text-align: center">${item.measure.r || ''}</td>
+                    <td style="text-align: right">${item.balance_quantity_start || 0}</td>
+                    <td style="text-align: right">${item.balance_sum_start || 0}</td>
+                    <td style="text-align: right">${item.turnover_quantity_in || 0}</td>
+                    <td style="text-align: right">${item.turnover_sum_in || 0}</td>
+                    <td style="text-align: right">${item.turnover_quantity_out || 0}</td>
+                    <td style="text-align: right">${item.turnover_sum_out || 0}</td>
+                    <td style="text-align: right">${item.balance_quantity_end || 0}</td>
+                    <td style="text-align: right">${item.balance_sum_end || 0}</td>
                 `;
                 tableBody.appendChild(row);
             });
@@ -125,8 +174,14 @@
         }
     }
 
-    // Загружаем один раз
-    fetchData();
+    // Обработка изменения склада
+    storageSelect.addEventListener('change', () => {
+        const selectedStorage = storageSelect.value;
+        fetchData(selectedStorage);
+    });
+
+    // Начальная загрузка
+    fetchData(storageSelect.value);
 </script>
 </body>
 </html>
